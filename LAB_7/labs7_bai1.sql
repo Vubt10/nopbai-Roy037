@@ -1,0 +1,79 @@
+﻿--c1
+USE QLDA;
+GO
+
+CREATE OR ALTER FUNCTION fn_TuoiNhanVien(@MaNV CHAR(9))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Tuoi INT;
+    SELECT @Tuoi = DATEDIFF(YEAR, NGSINH, GETDATE())
+    FROM NHANVIEN
+    WHERE MANV = @MaNV;
+    RETURN @Tuoi;
+END;
+GO
+SELECT dbo.fn_TuoiNhanVien('001') AS Tuoi;
+--c2
+CREATE OR ALTER FUNCTION fn_SoLuongDeAn(@MaNV CHAR(9))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @SoLuong INT;
+    SELECT @SoLuong = COUNT(DISTINCT MADA)
+    FROM PHANCONG
+    WHERE MA_NVIEN = @MaNV;
+    RETURN @SoLuong;
+END;
+GO
+SELECT dbo.fn_SoLuongDeAn('001') AS SoLuongDeAn;
+--c3
+CREATE OR ALTER FUNCTION fn_SoLuongTheoPhai(@Phai NVARCHAR(10))
+RETURNS INT
+AS
+BEGIN
+    DECLARE @SoLuong INT;
+    SELECT @SoLuong = COUNT(*)
+    FROM NHANVIEN
+    WHERE PHAI = @Phai;
+    RETURN @SoLuong;
+END;
+GO
+SELECT dbo.fn_SoLuongTheoPhai(N'Nam') AS SoNam,
+       dbo.fn_SoLuongTheoPhai(N'Nữ') AS SoNu;
+--c4
+CREATE OR ALTER FUNCTION fn_NhanVienLuongTrenTB(@TenPhong NVARCHAR(30))
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT NV.HONV, NV.TENLOT, NV.TENNV, NV.LUONG
+    FROM NHANVIEN NV
+    JOIN PHONGBAN PB ON NV.PHG = PB.MAPHG
+    WHERE PB.TENPHG = @TenPhong
+      AND NV.LUONG > (
+          SELECT AVG(NV2.LUONG)
+          FROM NHANVIEN NV2
+          WHERE NV2.PHG = PB.MAPHG
+      )
+);
+GO
+SELECT * FROM dbo.fn_NhanVienLuongTrenTB(N'Nghiên cứu');
+--c5
+CREATE OR ALTER FUNCTION fn_ThongTinPhong(@MaPhong INT)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT PB.TENPHG,
+           NV.HONV + ' ' + NV.TENLOT + ' ' + NV.TENNV AS TruongPhong,
+           COUNT(DA.MADA) AS SoLuongDeAn
+    FROM PHONGBAN PB
+    JOIN NHANVIEN NV ON PB.TRPHG = NV.MANV
+    LEFT JOIN DEAN DA ON PB.MAPHG = DA.PHONG
+    WHERE PB.MAPHG = @MaPhong
+    GROUP BY PB.TENPHG, NV.HONV, NV.TENLOT, NV.TENNV
+);
+GO
+SELECT * FROM dbo.fn_ThongTinPhong(1);
+
